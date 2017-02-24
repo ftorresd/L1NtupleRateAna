@@ -2,4 +2,3 @@
 
 Usage: ./muPhotonRate.py
 
-;)
