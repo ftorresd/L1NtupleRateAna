@@ -1,2 +1,4 @@
 # L1NtupleRateAna
-L1NtupleRateAna
+
+
+Usage: ./muPhotonRate.py
