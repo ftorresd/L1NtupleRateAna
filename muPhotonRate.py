@@ -4,7 +4,8 @@
 Example L1TNtuple analysis program
 """
 
-import ROOT, os
+import threading
+import ROOT, os, math
 from copy import deepcopy as dc
 
 ROOT.PyConfig.IgnoreCommandLineOptions = True
@@ -13,17 +14,88 @@ ROOT.TH1.SetDefaultSumw2(True)
 ROOT.gStyle.SetOptStat(0)
 
 
-
-def acceptL1_Dimuon6_OS(muons):
-    #print muons
+def l1DoubleMu(muons):
     checker = False
     if (len(muons) >= 2):
-        if(muons[0].lorentzVector.Pt() >= 6.0 and muons[1].lorentzVector.Pt() >= 6.0):
-            if (muons[0].chg*muons[1].chg < 1.0):
-                checker = True
+        checker = True
     return checker  
-    #return True
 
+def l1OS(muons):
+    checker = False
+    try:
+        if (muons[0].chg*muons[1].chg < 1.0):
+            checker = True
+    except:
+        checker = False
+    return checker  
+
+def l1QualityDoubleMu(muons):
+    checker = False
+    try:
+        if ((8 <= muons[0].qual <= 15) and (8 <= muons[1].qual <= 15)):
+            checker = True
+    except:
+        checker = False
+    return checker  
+
+def l1PtCutDoubleMu(ptCut, muons):
+    checker = False
+    try:
+        if(muons[0].lorentzVector.Pt() >= ptCut and muons[1].lorentzVector.Pt() >= ptCut):
+            checker = True
+    except:
+        checker = False
+    return checker  
+
+def l1PtCutEG(ptCut, egs):
+    checker = False
+    try:
+        if(egs[0].lorentzVector.Pt() >= ptCut):
+            checker = True
+    except:
+        checker = False
+    return checker  
+
+
+
+class l1Config(object):
+    def __init__(self, name, expression):
+        self.name  = name
+        self.expression = expression
+        # self.muonList = muonList
+        # self.egList = egList
+        self.count = 0
+        # histo members
+        self.histos = {}
+        self.histos["h_muon1Pt_" + self.name] = ROOT.TH1F("h_muon1Pt_" + self.name, "Leading Muon Pt ("+self.name+"); Pt (GeV); NEvts", 80, 0., 80.)
+        self.histos["h_muon2Pt_" + self.name] = ROOT.TH1F("h_muon2Pt_" + self.name, "Trailing Muon Pt ("+self.name+"); Pt (GeV); NEvts", 80, 0., 80.)
+        self.histos["h_egPt_" + self.name] = ROOT.TH1F("h_egPt_" + self.name, "EG Pt ("+self.name+"); Pt (GeV); NEvts", 80, 0., 80.)
+        self.histos["h_dimuonPtSpread_" + self.name] = ROOT.TH1F("h_dimuonPtSpread_" + self.name, "Dimuon Pt Spread ("+self.name+"); Pt (GeV); NEvts", 80, 0., 80.)
+        self.histos["h_dimuonMass_" + self.name] = ROOT.TH1F("h_dimuonMass_" + self.name, "Dimuon Mass ("+self.name+"); Pt (GeV); NEvts", 80, 0., 80.)
+    
+    def __str__(self):
+        return "Name: " + self.name + " \n Expression: " + self.expression 
+
+    def fillHistograms(self, muonList, egList):
+        if(eval(self.expression)):
+            self.count += 1
+            if (len(muonList) >= 1):
+                self.histos["h_muon1Pt_" + self.name].Fill(muonList[0].lorentzVector.Pt())
+            if (len(muonList) >= 2):
+                self.histos["h_muon2Pt_" + self.name].Fill(muonList[1].lorentzVector.Pt())
+                self.histos["h_dimuonPtSpread_" + self.name].Fill(math.fabs(muonList[0].lorentzVector.Pt() - muonList[1].lorentzVector.Pt()))
+                self.histos["h_dimuonMass_" + self.name].Fill((muonList[0].lorentzVector + muonList[1].lorentzVector).M())
+            if (len(egList) >= 1):
+                self.histos["h_egPt_" + self.name].Fill(egList[0].lorentzVector.Pt())
+
+    def printHistograms(self, ouputFile):
+        ouputFile.cd()
+        os.system("mkdir l1Plots/" + self.name)
+        for histName, hist in self.histos.iteritems():
+            hist.Write()
+            hist.Draw('HIST')
+            ROOT.gPad.SetLogy()
+            ROOT.gPad.SaveAs("l1Plots/" + self.name + "/" + histName + ".png")
 
 
 
@@ -72,26 +144,11 @@ class L1Eg(object):
 
 
 
-def eventLoop(files, total_rate = 1., nevents = -1, verbose = False):
-    # load file
-    outfile = ROOT.TFile.Open('rate_histograms.root', 'recreate')
+def eventLoop(files, l1Configs, outputFilename, total_rate = 1., nevents = -1, verbose = False):
+    # load output file
+    outfile = ROOT.TFile.Open(outputFilename, 'recreate')
 
-    differential_rate = ROOT.TH1F('ditau_differential_rate', 'ditau_differential_rate', 80, 0., 80.)
-    cumulative_rate = dc(differential_rate)
-    cumulative_rate.SetTitle('ditau_cumulative_rate')
-    cumulative_rate.SetName ('ditau_cumulative_rate')
-
-
-    h_muon1Pt = ROOT.TH1F('h_muon1Pt', 'Leading Muon Pt; Pt (GeV);Rate (Hz)', 80, 0., 80.)
-    h_muon2Pt = dc(h_muon1Pt)
-    h_muon2Pt.SetTitle('Trailing Muon Pt; Pt (GeV);Rate (Hz)')
-    h_muon2Pt.SetName ('h_muon2Pt')
-    h_egPt = dc(h_muon1Pt)
-    h_egPt.SetTitle('EG Pt; Pt (GeV);Rate (Hz)')
-    h_egPt.SetName ('h_egPt')
-    h_dimuonPtSpread = ROOT.TH1F('h_dimuonPtSpread', 'Dimuon Pt Spread; Pt (GeV);Rate (Hz)', 160, -80., 80.)
-    h_dimuonMass = ROOT.TH1F('h_dimuonMass', 'Dimuon Mass; Pt (GeV);Rate (Hz)', 80, 0., 80.)
-
+    # load files
     print 'start loading %d files' %len(files)
     
     treeEvent = ROOT.TChain("l1EventTree/L1EventTree")
@@ -105,8 +162,10 @@ def eventLoop(files, total_rate = 1., nevents = -1, verbose = False):
 
     treeEvent.AddFriend(treeL1up)
 
+
+    # actually loops
     for jentry, event in enumerate(treeEvent):
-        if jentry%10000 == 0:
+        if jentry%1000 == 0:
             print '=============================> event %d / %d' %(jentry, treeEvent.GetEntries())
         if nevents > 0 and jentry >= nevents:
             break
@@ -115,6 +174,7 @@ def eventLoop(files, total_rate = 1., nevents = -1, verbose = False):
         sim = treeL1up.L1Upgrade
         
 
+        # define objects
         ### Taus
         if verbose: print '\nevent: %d, nTaus: %d' %(ev.event, sim.nTaus)
         
@@ -164,74 +224,75 @@ def eventLoop(files, total_rate = 1., nevents = -1, verbose = False):
         isomuons = [muon for muon in muons if muon.iso == 1]
         #############
 
-        if (acceptL1_Dimuon6_OS(muons)):
-            #print "Passou: L1_Dimuon6_OS"
-            h_muon1Pt.Fill(muons[0].lorentzVector.Pt())
-            h_muon2Pt.Fill(muons[1].lorentzVector.Pt())
-            if(len(egs) > 0):
-                h_egPt.Fill(egs[0].lorentzVector.Pt())
-            h_dimuonPtSpread.Fill(muons[0].lorentzVector.Pt() - muons[1].lorentzVector.Pt())
-            h_dimuonMass.Fill((muons[0].lorentzVector + muons[1].lorentzVector).M())
+        for config in l1Configs: 
+            config.fillHistograms(muons, egs)
 
+    # end of events loop
 
-    os.system("rm -rf l1Plots ; mkdir l1Plots")
+ 
+    for config in l1Configs:
+        config.printHistograms(outfile)
 
-
-    outfile.cd()
-    h_muon1Pt.Write()     
-    h_muon1Pt.Draw('HIST')
-    ROOT.gPad.SetLogy()
-    ROOT.gPad.SaveAs('l1Plots/h_muon1Pt_L1_Dimuon6_OS.png')
-
-    outfile.cd()
-    h_muon2Pt.Write()     
-    h_muon2Pt.Draw('HIST')
-    ROOT.gPad.SetLogy()
-    ROOT.gPad.SaveAs('l1Plots/h_muon2Pt_L1_Dimuon6_OS.png')
-
-    outfile.cd()
-    h_egPt.Write()     
-    h_egPt.Draw('HIST')
-    ROOT.gPad.SetLogy()
-    ROOT.gPad.SaveAs('l1Plots/h_egPt_L1_Dimuon6_OS.png')
-
-    outfile.cd()
-    h_dimuonPtSpread.Write()     
-    h_dimuonPtSpread.Draw('HIST')
-    ROOT.gPad.SetLogy()
-    ROOT.gPad.SaveAs('l1Plots/h_dimuonPtSpread_L1_Dimuon6_OS.png')
-
-    outfile.cd()
-    h_dimuonMass.Write()     
-    h_dimuonMass.Draw('HIST')
-    ROOT.gPad.SetLogy(0)
-    ROOT.gPad.SaveAs('l1Plots/h_dimuonMass_L1_Dimuon6_OS.png')
-
-
-    # allevents = float(treeEvent.GetEntries() if nevents<0 else nevents)
-
-    # bins = []
-
-    # for bin in range(differential_rate.GetNbinsX()):
-    #     bins.append( float(differential_rate.GetBinContent(bin+1)) )
-
-    # rates = []
-    
-    # for i, bin in enumerate(bins):
-    #     rates.append(total_rate * sum(bins[i:]) / allevents)
-    
-    # for bin in range(cumulative_rate.GetNbinsX()):
-    #     cumulative_rate.SetBinContent(bin+1, rates[bin])
-
-    # ROOT.gPad.SetLogy()
-    
-    # outfile.cd()
-    # cumulative_rate.Write()     
-    # cumulative_rate.Draw('HIST')
-    # ROOT.gPad.SaveAs('rate.pdf')
-    
-
+    #os.system("tar -zcvf l1Plots.tar.gz l1Plots/")
 
 if __name__ == "__main__":
-    #eventLoop(['root://xrootd.unl.edu//store/group/dpg_trigger/comm_trigger/L1Trigger/L1Menu2016/Stage2/l1-tsg-v4/ZeroBias2/crab_l1-tsg-v4__259721_ZeroBias2/160315_144909/0000/L1Ntuple_%d.root' % i for i in range(1,35)])
-    eventLoop(['file:/uscmst1b_scratch/lpc1/3DayLifetime/ftorresd/L1Ntuples/L1Ntuple_%d.root' % i for i in range(1,500)])
+    l1NtupleFiles = ['file:/uscmst1b_scratch/lpc1/3DayLifetime/ftorresd/L1Ntuples/L1Ntuple_%d.root' % i for i in range(1,500)]
+
+    #l1DoubleMu(muonList):
+    #l1OS(muonList):
+    #l1QualityDoubleMu(muonList):
+    #l1PtCutDoubleMu(ptCut, muonList):
+    #l1PtCutEG(ptCut, egList):
+
+    l1DoubleMuConfigs = []
+    for mupt in range(0,16):
+        l1DoubleMuConfigs.append(l1Config("L1_DoubleMu"+str(mupt)+"", "l1DoubleMu(muonList) and l1QualityDoubleMu(muonList) and l1PtCutDoubleMu("+str(mupt)+".0, muonList)"))
+
+    l1DoubleMuOSConfigs = []
+    for mupt in range(0,16):
+        l1DoubleMuOSConfigs.append(l1Config("L1_DoubleMu"+str(mupt)+"_OS", "l1DoubleMu(muonList) and l1OS(muonList) and l1QualityDoubleMu(muonList) and l1PtCutDoubleMu("+str(mupt)+".0, muonList)"))
+
+    l1DoubleMuEGConfigs = []
+    for mupt in range(0,16):
+        for egpt in range(9,26):
+            l1DoubleMuEGConfigs.append(l1Config("L1_DoubleMu"+str(mupt)+"_EG"+str(egpt), "l1DoubleMu(muonList) and l1QualityDoubleMu(muonList) and l1PtCutDoubleMu("+str(mupt)+".0, muonList) and l1PtCutEG("+str(egpt)+", egList)"))
+
+    l1DoubleMuOSEGConfigs = []
+    for mupt in range(0,16):
+        for egpt in range(9,26):
+            l1DoubleMuOSEGConfigs.append(l1Config("L1_DoubleMu"+str(mupt)+"_OS_EG"+str(egpt), "l1DoubleMu(muonList) and l1OS(muonList) and l1QualityDoubleMu(muonList) and l1PtCutDoubleMu("+str(mupt)+".0, muonList) and l1PtCutEG("+str(egpt)+", egList)"))
+
+
+    l1Configs = l1DoubleMuConfigs+l1DoubleMuOSConfigs+l1DoubleMuEGConfigs+l1DoubleMuOSEGConfigs
+    #l1Configs = l1DoubleMuConfigs
+    #eventLoop(l1NtupleFiles, l1Configs)
+
+    os.system("rm -rf l1Plots/*")
+
+    nThreads = 20
+
+    def split(a, n):
+        k, m = divmod(len(a), n)
+        return (a[i * k + min(i, m):(i + 1) * k + min(i + 1, m)] for i in xrange(n))
+
+    l1ConfigsList = list(split(l1Configs, nThreads))
+    #print l1ConfigsList
+
+    threads = []
+    for i in range(nThreads):
+        threads.append(threading.Thread(target=eventLoop, args=(l1NtupleFiles, l1ConfigsList[i],"l1Plots/histograms_"+str(i)+".root",)))
+
+    for t in threads:
+        t.start()
+
+    for t in threads:
+        t.join()
+
+    os.system("tar -zcvf l1Plots.tar.gz l1Plots/")
+    print "\nl1Plots.tar.gz created\n"
+
+
+
+
+
+ 
