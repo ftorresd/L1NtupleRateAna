@@ -269,7 +269,7 @@ if __name__ == "__main__":
 
     os.system("rm -rf l1Plots/*")
 
-    nThreads = 20
+    nThreads = 8
 
     def split(a, n):
         k, m = divmod(len(a), n)
@@ -287,7 +287,7 @@ if __name__ == "__main__":
 
     for t in threads:
         t.join()
-
+ 
     os.system("tar -zcvf l1Plots.tar.gz l1Plots/")
     print "\nl1Plots.tar.gz created\n"
 
