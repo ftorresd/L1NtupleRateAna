@@ -1,4 +1,4 @@
 # L1NtupleRateAna
 
-Usage: ./muPhotonRate.py
+Usage: ./muPhotonRate.py nThreads configFile.py
 
