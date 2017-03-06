@@ -211,8 +211,7 @@ class L1Eg(object):
 
 
 
-
-def eventLoop(files, l1Configs, outputFilename, total_rate = 1., nevents = -1, verbose = False):
+def eventLoop(files, l1Configs, outputFilename, dataSetType, xSec, instaLumi, total_rate = 1., nevents = -1, verbose = False):
     countEvts = 0
     lumiMin = -1
     lumiMax = -1
@@ -325,17 +324,23 @@ def eventLoop(files, l1Configs, outputFilename, total_rate = 1., nevents = -1, v
     # print "Efficiency of TrigBit L1 :", float(effTrigBitL1)
     # #func_effTrigBitL1.SetParameter(0,float(effTrigBitL1))
     
-    lumiLength = 23.31 #s
-    deltaLumi = lumiMax - lumiMin
-    Lum = 1 #10^33cms-2s-1
-    lumiRef = 1 #10^33cms-2s-1 
-    nBunches = 2592
-    if nBunches < 0 :
-      histoScale = (-1.*nBunches)/(deltalumi*23.31)  
+
+    # define the scale
+    if (dataSetType == "Data"):
+        lumiLength = 23.31 #s
+        deltaLumi = lumiMax - lumiMin
+        Lum = 1 #10^33cms-2s-1
+        lumiRef = 1 #10^33cms-2s-1 
+        nBunches = 2592
+        if nBunches < 0 :
+          histoScale = (-1.*nBunches)/(deltalumi*23.31)  
+        else:
+           histoScale = 11246. #ZB per bunch in Hz
+           histoScale /= countEvts # in Hz
+           histoScale *= nBunches
     else:
-       histoScale = 11246. #ZB per bunch in Hz
-       histoScale /= countEvts # in Hz
-       histoScale *= nBunches
+        histoScale = xSec * instaLumi / countEvts
+
        
     
     # histoScale = (1./(deltaLumi*lumiLength)*(Lum/lumiRef))
@@ -355,7 +360,12 @@ if __name__ == "__main__":
     # dataSetName = "ZeroBias"
     dataSetName = cfgVars['dataSetName']
 
-    
+    dataSetType = cfgVars['dataSetType']
+    xSec = cfgVars['xSec']
+    instaLumi = cfgVars['instaLumi']
+
+
+
 ### Setup L1 Seeds ###
 
     #l1DoubleMu(muonList):
@@ -468,7 +478,7 @@ if __name__ == "__main__":
 
     threads = []
     for i in range(nThreads):
-        threads.append(threading.Thread(target=eventLoop, args=(l1NtupleFiles, l1ConfigsList[i],"l1Plots_"+dataSetName+"/histograms_"+str(i)+".root",)))
+        threads.append(threading.Thread(target=eventLoop, args=(l1NtupleFiles, l1ConfigsList[i],"l1Plots_"+dataSetName+"/histograms_"+str(i)+".root", dataSetType, xSec, instaLumi,)))
 
     for t in threads:
         t.start()
