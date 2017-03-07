@@ -42,7 +42,7 @@ let j=0 # define counting variable
 Q=() # define working array
 while read -r line; do # process file by file
 	# echo $line    
-    Q+=("nohup ./muPhotonRate.py $nThreads config/$line.py >& ${line%.py}.log & \n")
+    Q+=("nohup ./muPhotonRate.py $nThreads configs/$line.py >& ${line%.py}.log & \n")
 done < <( sed -e 's/\s\+/\n/g' <<<sed -e 's/^"//' -e 's/"$//' <<<$FILES )
  
 
@@ -53,7 +53,7 @@ case $? in
 	255) clear ; exit 1 ;;
 esac
 
-
+ 
 
 # do the thing
 if [ $exeCmd = 1 ]
