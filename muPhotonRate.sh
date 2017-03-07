@@ -42,7 +42,7 @@ let j=0 # define counting variable
 Q=() # define working array
 while read -r line; do # process file by file
 	# echo $line    
-    Q+=("nohup ./muPhotonRate.sh $nThreads config/$line.py > ${line%.py}.log 2>&1 & \n")
+    Q+=("nohup ./muPhotonRate.py $nThreads config/$line.py > ${line%.py}.log 2>&1 & \n")
 done < <( sed -e 's/\s\+/\n/g' <<<sed -e 's/^"//' -e 's/"$//' <<<$FILES )
 
 
