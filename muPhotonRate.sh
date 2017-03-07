@@ -1,6 +1,6 @@
 #!/bin/bash
 
-
+ 
 # main stuff
 nThreads=$( whiptail --fb --title "Threads" --inputbox 'How many threads?' 0 0 3>&1 1>&2 2>&3 )
 case $? in
