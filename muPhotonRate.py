@@ -339,7 +339,7 @@ def eventLoop(files, l1Configs, outputFilename, dataSetType, xSec, instaLumi, to
            histoScale /= countEvts # in Hz
            histoScale *= nBunches
     else:
-        histoScale = xSec * instaLumi / countEvts
+        histoScale = xSec * (1E-36) * instaLumi / countEvts
 
        
     

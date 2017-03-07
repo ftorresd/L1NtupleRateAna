@@ -36,7 +36,7 @@ if [[ $FILES = '' ]]
 then
     whiptail --fb --title 'Error!' --msgbox 'No dataset selected. Aborting...' 12 78 ; clear ; exit 1
 fi
- 
+  
 
 let j=0 # define counting variable
 Q=() # define working array
