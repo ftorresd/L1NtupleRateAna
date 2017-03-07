@@ -10,6 +10,6 @@ dataSetName = "ZToJPsiGamma"
 
 dataSetType = "MC"
 
-xSec = ????
+xSec = 1.8881E0 #pb
 
 instaLumi = 2.0E34
