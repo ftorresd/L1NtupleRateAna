@@ -1,7 +1,5 @@
 #!/bin/bash
 
-# seting up vars
-# cmd="nohup \aaaa"
 
 # main stuff
 nThreads=$( whiptail --fb --title "Threads" --inputbox 'How many threads?' 0 0 3>&1 1>&2 2>&3 )
@@ -38,7 +36,7 @@ if [[ $FILES = '' ]]
 then
     whiptail --fb --title 'Error!' --msgbox 'No dataset selected. Aborting...' 12 78 ; clear ; exit 1
 fi
-
+ 
 
 let j=0 # define counting variable
 Q=() # define working array
@@ -48,7 +46,7 @@ while read -r line; do # process file by file
 done < <( sed -e 's/\s\+/\n/g' <<<sed -e 's/^"//' -e 's/"$//' <<<$FILES )
 
 
-whiptail --fb --title "Confirm" --yesno "Run:\n\n$(echo " ${Q[@]}")" 0 0 && exeCmd=1
+whiptail --fb --msgbox "Run:\n\n$(echo " ${Q[@]}")" 0 0 && exeCmd=1
 case $? in
 	  1) clear ; exit 1 ;;
 	  2) clear ; exit 1 ;;
