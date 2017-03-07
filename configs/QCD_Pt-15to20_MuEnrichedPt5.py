@@ -106,6 +106,6 @@ dataSetName = "QCD_Pt-15to20_MuEnrichedPt5"
 
 dataSetType = "MC"
 
-xSec = ????
+xSec = 1.27E+09 #pb
 
 instaLumi = 2.0E34
