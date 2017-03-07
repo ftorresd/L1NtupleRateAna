@@ -1,4 +1,9 @@
 # L1NtupleRateAna
+Clone:
+
+```
+git clone git@github.com:ftorresd/L1NtupleRateAna.git
+```
 
 Usage: 
 
