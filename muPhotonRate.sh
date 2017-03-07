@@ -61,6 +61,7 @@ if [ $exeCmd = 1 ]
   	#echo $exeCmd
   	clear
   	echo -e "\n #copy and paste\n"
+  	echo "export PYTHONUNBUFFERED=1"
     echo -e " ${Q[@]}"
     echo -e "\n\n"
     # eval `echo -e " ${Q[@]}"`
